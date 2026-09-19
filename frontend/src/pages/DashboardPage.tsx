@@ -1,135 +1,207 @@
-import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { BookOpen, Flame, Leaf, Timer } from "lucide-react";
-import { PageIntro } from "@/components/PageIntro";
+import { Link } from "react-router-dom";
+import { BookOpen, CalendarDays, CheckSquare, Timer } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useDemoState } from "@/contexts/DemoStateContext";
 import { useGreeting } from "@/hooks/useGreeting";
-import { fetchHealth } from "@/services/api";
-
-const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+import { formatLongDate, dueLabel } from "@/lib/dates";
+import {
+  demoActivity,
+  demoExams,
+  demoProfile,
+  demoWeeklyStudy,
+  subjectName,
+} from "@/lib/demoData";
 
 export function DashboardPage() {
   const greeting = useGreeting();
-  const healthQuery = useQuery({
-    queryKey: ["health"],
-    queryFn: fetchHealth,
-  });
+  const { homework, tasks } = useDemoState();
+  const pending = homework.filter((item) => item.status !== "submitted");
+  const todayTasks = tasks.filter((item) => item.date === "2026-09-19");
+  const maxHours = Math.max(...demoWeeklyStudy.map((item) => item.hours), 1);
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <PageIntro
+    <div className="mx-auto max-w-6xl min-w-0">
+      <PageHeader
         eyebrow="Today"
-        title={`${greeting}.`}
-        description="Your study workspace is ready. Stats, tasks, and focus sessions will appear here once those features are connected."
+        title={`${greeting}, ${demoProfile.name.split(" ")[0]}.`}
+        description={`${formatLongDate()} · Semester ${demoProfile.semester}${demoProfile.section}, ${demoProfile.course}.`}
         action={
-          <Badge tone={healthQuery.isSuccess ? "mint" : "neutral"}>
-            {healthQuery.isSuccess
-              ? "API connected"
-              : healthQuery.isError
-                ? "API offline"
-                : "Checking API"}
-          </Badge>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/app/homework">
+              <Button size="sm">Log homework</Button>
+            </Link>
+            <Link to="/app/planner">
+              <Button size="sm" variant="outline">
+                Open planner
+              </Button>
+            </Link>
+          </div>
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {[
-          {
-            label: "Focus protected",
-            value: "—",
-            hint: "Hours will land here after your first session.",
-            icon: Timer,
-            tone: "bg-primary-soft text-primary",
-          },
-          {
-            label: "Open tasks",
-            value: "—",
-            hint: "Assignments stay on this board, not in five apps.",
-            icon: BookOpen,
-            tone: "bg-amber-soft text-amber",
-          },
-          {
-            label: "Study streak",
-            value: "—",
-            hint: "A quiet streak, counted by days you showed up.",
-            icon: Flame,
-            tone: "bg-mint-soft text-mint",
-          },
-        ].map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 * index, duration: 0.35 }}
-            >
-              <Card className="h-full">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted">{item.label}</p>
-                    <p className="mt-2 font-display text-3xl text-ink">{item.value}</p>
-                  </div>
-                  <span className={`grid size-10 place-items-center rounded-2xl ${item.tone}`}>
-                    <Icon className="size-4.5" />
-                  </span>
-                </div>
-                <p className="mt-4 text-sm leading-5 text-muted">{item.hint}</p>
-              </Card>
-            </motion.div>
-          );
-        })}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Pending homework"
+          value={String(pending.length)}
+          hint="One write-up is due tomorrow."
+          icon={BookOpen}
+          tone="primary"
+        />
+        <StatCard
+          label="Upcoming exams"
+          value={String(demoExams.length)}
+          hint="Next: OS series test on 28 Sep."
+          icon={CalendarDays}
+          tone="amber"
+        />
+        <StatCard
+          label="Today's tasks"
+          value={`${todayTasks.filter((item) => item.status === "open").length} open`}
+          hint={`${todayTasks.length} on the Saturday list.`}
+          icon={CheckSquare}
+          tone="mint"
+        />
+        <StatCard
+          label="Study this week"
+          value="14.0h"
+          hint="Thursday was the deep-work day."
+          icon={Timer}
+          tone="primary"
+        />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card className="overflow-hidden">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <Card className="min-w-0">
           <CardHeader>
             <div>
-              <CardTitle>This week’s rhythm</CardTitle>
-              <CardDescription>
-                A lighter view of the week so planning doesn’t feel like another class.
-              </CardDescription>
+              <CardTitle>Pending homework</CardTitle>
+              <CardDescription>What still needs a sitting before class.</CardDescription>
             </div>
-            <Badge tone="primary">Placeholder</Badge>
+            <Link to="/app/homework" className="text-sm font-medium text-primary">
+              All
+            </Link>
           </CardHeader>
-          <div className="grid grid-cols-7 gap-2">
-            {weekdays.map((day, index) => (
-              <div
-                key={day}
-                className="rounded-2xl bg-canvas px-2 py-3 text-center"
-              >
-                <p className="text-[11px] font-medium text-muted">{day}</p>
-                <div
-                  className={`mx-auto mt-3 h-16 rounded-xl ${
-                    index === 4
-                      ? "bg-[linear-gradient(180deg,#5b4bff_0%,#8f84ff_100%)]"
-                      : "bg-white"
-                  }`}
+          <ul className="space-y-3">
+            {pending.slice(0, 4).map((item) => (
+              <li key={item.id} className="flex items-start justify-between gap-3 rounded-2xl bg-canvas px-3 py-3">
+                <div className="min-w-0">
+                  <p className="font-medium leading-snug">{item.title}</p>
+                  <p className="text-sm text-muted">{subjectName(item.subjectId)}</p>
+                </div>
+                <Badge tone={item.priority === "high" ? "primary" : "amber"}>
+                  {dueLabel(item.dueDate)}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <Card className="min-w-0">
+          <CardHeader>
+            <div>
+              <CardTitle>Upcoming exams</CardTitle>
+              <CardDescription>Internals and labs on the near calendar.</CardDescription>
+            </div>
+            <Link to="/app/exams" className="text-sm font-medium text-primary">
+              All
+            </Link>
+          </CardHeader>
+          <ul className="space-y-3">
+            {demoExams.slice(0, 3).map((exam) => (
+              <li key={exam.id} className="rounded-2xl bg-canvas px-3 py-3">
+                <p className="font-medium">{exam.title}</p>
+                <p className="text-sm text-muted">
+                  {subjectName(exam.subjectId)} · {exam.date} · {exam.venue}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <Card className="min-w-0">
+          <CardHeader>
+            <div>
+              <CardTitle>Today's tasks</CardTitle>
+              <CardDescription>Campus errands mixed with revision.</CardDescription>
+            </div>
+            <Link to="/app/tasks" className="text-sm font-medium text-primary">
+              Tasks
+            </Link>
+          </CardHeader>
+          <ul className="space-y-2">
+            {todayTasks.map((task) => (
+              <li key={task.id} className="flex items-center gap-3 rounded-2xl border border-line px-3 py-2.5">
+                <span
+                  className={
+                    task.status === "done"
+                      ? "size-2.5 rounded-full bg-mint"
+                      : "size-2.5 rounded-full bg-primary"
+                  }
                 />
+                <span className={task.status === "done" ? "text-muted line-through" : ""}>
+                  {task.title}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <Card className="min-w-0">
+          <CardHeader>
+            <div>
+              <CardTitle>Study activity</CardTitle>
+              <CardDescription>Hours logged this week (demo).</CardDescription>
+            </div>
+          </CardHeader>
+          <div className="flex h-36 items-end gap-2">
+            {demoWeeklyStudy.map((point) => (
+              <div key={point.day} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                <div
+                  className="w-full rounded-t-xl bg-[linear-gradient(180deg,#5b4bff_0%,#8f84ff_100%)]"
+                  style={{ height: `${(point.hours / maxHours) * 100}%` }}
+                />
+                <span className="text-[11px] text-muted">{point.day}</span>
               </div>
             ))}
           </div>
         </Card>
-
-        <Card className="bg-[linear-gradient(165deg,#ffffff_0%,#f3f0ff_52%,#eaf8f1_100%)]">
-          <CardHeader>
-            <div>
-              <CardTitle>Next focus block</CardTitle>
-              <CardDescription>
-                When Focus is ready, your next session will sit here.
-              </CardDescription>
-            </div>
-            <Leaf className="size-5 text-mint" />
-          </CardHeader>
-          <div className="rounded-[1.25rem] border border-white/80 bg-white/70 p-4">
-            <p className="font-medium">No session scheduled</p>
-            <p className="mt-1 text-sm leading-5 text-muted">
-              Keep the desk clear. We’ll add timers, breaks, and course context in a later step.
-            </p>
-          </div>
-        </Card>
       </div>
+
+      <Card className="mt-4 min-w-0">
+        <CardHeader>
+          <div>
+            <CardTitle>Recent activity</CardTitle>
+            <CardDescription>A short trail of what already happened.</CardDescription>
+          </div>
+        </CardHeader>
+        <ul className="space-y-3">
+          {demoActivity.map((item) => (
+            <li key={item.id} className="flex gap-3">
+              <span
+                className={
+                  item.tone === "mint"
+                    ? "mt-1 size-2.5 rounded-full bg-mint"
+                    : item.tone === "amber"
+                      ? "mt-1 size-2.5 rounded-full bg-amber"
+                      : "mt-1 size-2.5 rounded-full bg-primary"
+                }
+              />
+              <div>
+                <p className="font-medium">{item.title}</p>
+                <p className="text-sm text-muted">
+                  {item.detail} · {item.time}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Card>
     </div>
   );
 }

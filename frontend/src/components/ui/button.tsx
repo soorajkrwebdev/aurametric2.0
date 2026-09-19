@@ -13,6 +13,7 @@ const buttonVariants = cva(
           "bg-primary-soft text-primary-dark hover:bg-[#e3deff]",
         ghost: "text-muted hover:bg-white hover:text-ink",
         mint: "bg-mint-soft text-mint hover:bg-[#d7f3e6]",
+        outline: "border border-line bg-white text-ink hover:bg-canvas",
       },
       size: {
         sm: "h-9 px-3.5 text-sm",
