@@ -37,23 +37,31 @@ export type Subject = {
 
 export type Homework = {
   id: string;
+  user_id?: string;
+  subject_id?: string | null;
+  subjectId?: string;
   title: string;
-  subjectId: string;
-  description: string;
-  dueDate: string;
+  description?: string | null;
+  due_date?: string | null;
+  dueDate?: string | null;
   priority: Priority;
   status: HomeworkStatus;
 };
 
 export type Exam = {
   id: string;
-  title: string;
-  subjectId: string;
-  date: string;
-  time: string;
-  venue: string;
-  type: ExamType;
-  syllabus: string;
+  user_id?: string;
+  subject_id?: string | null;
+  subjectId?: string;
+  title?: string;
+  exam_date?: string;
+  date?: string;
+  time?: string;
+  venue?: string;
+  type?: ExamType;
+  exam_type?: "internal" | "lab" | "end-semester";
+  notes?: string | null;
+  syllabus?: string;
 };
 
 export type Task = {
@@ -68,21 +76,32 @@ export type Task = {
 
 export type Hobby = {
   id: string;
-  name: string;
-  weeklyGoalHours: number;
-  loggedHours: number;
-  lastSession: string;
-  note: string;
+  user_id?: string;
+  name?: string;
+  hobby_name?: string;
+  weeklyGoalHours?: number;
+  loggedHours?: number;
+  hours_spent?: number;
+  lastSession?: string;
+  date?: string;
+  note?: string;
+  notes?: string | null;
 };
 
 export type StudySession = {
   id: string;
-  subjectId: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  focus: string;
-  completed: boolean;
+  user_id?: string;
+  subject_id?: string | null;
+  subjectId?: string;
+  date?: string;
+  study_date?: string;
+  startTime?: string;
+  endTime?: string;
+  focus?: string;
+  topic?: string;
+  duration?: number;
+  notes?: string | null;
+  completed?: boolean;
 };
 
 export type WeeklyStudyPoint = {
@@ -101,21 +120,106 @@ export type ActivityItem = {
 export type AppNotification = {
   id: string;
   title: string;
-  body: string;
-  time: string;
-  read: boolean;
-  category: "homework" | "exam" | "planner" | "system";
+  body?: string;
+  message?: string;
+  time?: string;
+  created_at?: string;
+  read?: boolean;
+  is_read?: boolean;
+  category?: "homework" | "exam" | "planner" | "system";
+  type?: "homework" | "exam" | "planner" | "system";
 };
 
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
-  content: string;
-  time: string;
+  content?: string;
+  message?: string;
+  time?: string;
+  created_at?: string;
 };
 
 export type ChatThread = {
   id: string;
   title: string;
   preview: string;
+};
+
+export type DashboardProfile = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  college: string | null;
+  course: string | null;
+  semester: number | null;
+  section: string | null;
+  profile_image: string | null;
+  created_at: string;
+};
+
+export type DashboardHomework = {
+  id: string;
+  user_id: string;
+  subject_id: string | null;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  priority: "low" | "medium" | "high";
+  status: "not-started" | "in-progress" | "submitted" | "late";
+  created_at: string;
+};
+
+export type DashboardExam = {
+  id: string;
+  user_id: string;
+  subject_id: string | null;
+  exam_date: string;
+  exam_type: "internal" | "lab" | "end-semester";
+  notes: string | null;
+  created_at: string;
+};
+
+export type DashboardTask = {
+  id: string;
+  user_id: string;
+  task_title: string;
+  status: "open" | "done";
+  priority: "low" | "medium" | "high";
+  due_date: string | null;
+  created_at: string;
+};
+
+export type DashboardStudySession = {
+  id: string;
+  user_id: string;
+  subject_id: string | null;
+  topic: string;
+  study_date: string;
+  duration: number;
+  notes: string | null;
+  created_at: string;
+};
+
+export type DashboardStats = {
+  totalSubjects: number;
+  pendingHomework: number;
+  upcomingExams: number;
+  completedTasks: number;
+  totalStudyMinutes: number;
+};
+
+export type DashboardData = {
+  profile: DashboardProfile | null;
+  stats: DashboardStats;
+  homework: DashboardHomework[];
+  exams: DashboardExam[];
+  tasks: DashboardTask[];
+  studySessions: DashboardStudySession[];
+  recentActivity: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    time: string;
+    tone: "primary" | "mint" | "amber";
+  }>;
 };

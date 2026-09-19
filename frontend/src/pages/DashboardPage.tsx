@@ -1,34 +1,75 @@
-import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { BookOpen, CalendarDays, CheckSquare, Timer } from "lucide-react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useDemoState } from "@/contexts/DemoStateContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useGreeting } from "@/hooks/useGreeting";
 import { formatLongDate, dueLabel } from "@/lib/dates";
-import {
-  demoActivity,
-  demoExams,
-  demoProfile,
-  demoWeeklyStudy,
-  subjectName,
-} from "@/lib/demoData";
+import { fetchDashboard } from "@/services/api";
 
 export function DashboardPage() {
   const greeting = useGreeting();
-  const { homework, tasks } = useDemoState();
+  const { session, user, loading: authLoading } = useAuth();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: fetchDashboard,
+    enabled: !authLoading && !!session?.access_token,
+    staleTime: 30_000,
+  });
+
+  const profile = data?.profile ?? {
+    name: user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "Student",
+    course: "",
+    college: "",
+    semester: null,
+    section: "",
+  };
+
+  const homework = data?.homework ?? [];
+  const exams = data?.exams ?? [];
+  const tasks = data?.tasks ?? [];
+  const studySessions = data?.studySessions ?? [];
+  const recentActivity = data?.recentActivity ?? [];
+  const stats = data?.stats ?? {
+    totalSubjects: 0,
+    pendingHomework: 0,
+    upcomingExams: 0,
+    completedTasks: 0,
+    totalStudyMinutes: 0,
+  };
+
   const pending = homework.filter((item) => item.status !== "submitted");
-  const todayTasks = tasks.filter((item) => item.date === "2026-09-19");
-  const maxHours = Math.max(...demoWeeklyStudy.map((item) => item.hours), 1);
+  const today = new Date();
+  const todayKey = today.toISOString().slice(0, 10);
+  const todayTasks = tasks.filter((item) => item.due_date && new Date(item.due_date).toISOString().slice(0, 10) === todayKey);
+
+  const weeklyStudy = Array.from({ length: 7 }, (_, index) => {
+    const pointDate = new Date();
+    pointDate.setDate(pointDate.getDate() - (6 - index));
+    const key = pointDate.toISOString().slice(0, 10);
+    const hours = studySessions
+      .filter((session) => session.study_date.slice(0, 10) === key)
+      .reduce((sum, session) => sum + Number(session.duration), 0) / 60;
+
+    return {
+      day: pointDate.toLocaleDateString("en-IN", { weekday: "short" }).slice(0, 3),
+      hours: Number(hours.toFixed(1)),
+    };
+  });
+  const maxHours = Math.max(...weeklyStudy.map((item) => item.hours), 1);
+  const studyHours = (stats.totalStudyMinutes / 60).toFixed(1);
 
   return (
     <div className="mx-auto max-w-6xl min-w-0">
       <PageHeader
         eyebrow="Today"
-        title={`${greeting}, ${demoProfile.name.split(" ")[0]}.`}
-        description={`${formatLongDate()} · Semester ${demoProfile.semester}${demoProfile.section}, ${demoProfile.course}.`}
+        title={`${greeting}, ${profile.name?.split(" ")[0] ?? "Student"}.`}
+        description={`${formatLongDate()} · ${profile.semester ? `Semester ${profile.semester}` : "Current semester"}${profile.section ? ` ${profile.section}` : ""}${profile.course ? `, ${profile.course}` : ""}.`}
         action={
           <div className="flex flex-wrap gap-2">
             <Link to="/app/homework">
@@ -46,29 +87,29 @@ export function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Pending homework"
-          value={String(pending.length)}
-          hint="One write-up is due tomorrow."
+          value={String(stats.pendingHomework || pending.length)}
+          hint={pending[0] ? `Next due ${dueLabel(pending[0].due_date ?? new Date().toISOString())}` : "No work left pending."}
           icon={BookOpen}
           tone="primary"
         />
         <StatCard
           label="Upcoming exams"
-          value={String(demoExams.length)}
-          hint="Next: OS series test on 28 Sep."
+          value={String(stats.upcomingExams || exams.length)}
+          hint={exams[0] ? `Next: ${exams[0].exam_type} on ${new Date(exams[0].exam_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}.` : "No exams scheduled."}
           icon={CalendarDays}
           tone="amber"
         />
         <StatCard
           label="Today's tasks"
           value={`${todayTasks.filter((item) => item.status === "open").length} open`}
-          hint={`${todayTasks.length} on the Saturday list.`}
+          hint={`${todayTasks.length} on the day plan.`}
           icon={CheckSquare}
           tone="mint"
         />
         <StatCard
           label="Study this week"
-          value="14.0h"
-          hint="Thursday was the deep-work day."
+          value={`${studyHours}h`}
+          hint={isLoading ? "Syncing your study log..." : "Your latest study minutes are live from the backend."}
           icon={Timer}
           tone="primary"
         />
@@ -90,10 +131,10 @@ export function DashboardPage() {
               <li key={item.id} className="flex items-start justify-between gap-3 rounded-2xl bg-canvas px-3 py-3">
                 <div className="min-w-0">
                   <p className="font-medium leading-snug">{item.title}</p>
-                  <p className="text-sm text-muted">{subjectName(item.subjectId)}</p>
+                  <p className="text-sm text-muted">{item.subject_id ? `Subject ${item.subject_id}` : "General work"}</p>
                 </div>
                 <Badge tone={item.priority === "high" ? "primary" : "amber"}>
-                  {dueLabel(item.dueDate)}
+                  {item.due_date ? dueLabel(item.due_date) : "No date"}
                 </Badge>
               </li>
             ))}
@@ -111,11 +152,11 @@ export function DashboardPage() {
             </Link>
           </CardHeader>
           <ul className="space-y-3">
-            {demoExams.slice(0, 3).map((exam) => (
+            {exams.slice(0, 3).map((exam) => (
               <li key={exam.id} className="rounded-2xl bg-canvas px-3 py-3">
-                <p className="font-medium">{exam.title}</p>
+                <p className="font-medium">{exam.exam_type}</p>
                 <p className="text-sm text-muted">
-                  {subjectName(exam.subjectId)} · {exam.date} · {exam.venue}
+                  {exam.subject_id ? `Subject ${exam.subject_id}` : "General exam"} · {new Date(exam.exam_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                 </p>
               </li>
             ))}
@@ -145,7 +186,7 @@ export function DashboardPage() {
                   }
                 />
                 <span className={task.status === "done" ? "text-muted line-through" : ""}>
-                  {task.title}
+                  {task.task_title}
                 </span>
               </li>
             ))}
@@ -156,11 +197,11 @@ export function DashboardPage() {
           <CardHeader>
             <div>
               <CardTitle>Study activity</CardTitle>
-              <CardDescription>Hours logged this week (demo).</CardDescription>
+              <CardDescription>Hours logged this week from your live study sessions.</CardDescription>
             </div>
           </CardHeader>
           <div className="flex h-36 items-end gap-2">
-            {demoWeeklyStudy.map((point) => (
+            {weeklyStudy.map((point) => (
               <div key={point.day} className="flex min-w-0 flex-1 flex-col items-center gap-2">
                 <div
                   className="w-full rounded-t-xl bg-[linear-gradient(180deg,#5b4bff_0%,#8f84ff_100%)]"
@@ -181,7 +222,7 @@ export function DashboardPage() {
           </div>
         </CardHeader>
         <ul className="space-y-3">
-          {demoActivity.map((item) => (
+          {recentActivity.map((item) => (
             <li key={item.id} className="flex gap-3">
               <span
                 className={

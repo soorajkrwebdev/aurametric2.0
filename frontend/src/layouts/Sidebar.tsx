@@ -1,12 +1,23 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, NavLink } from "react-router-dom";
 import { BrandMark } from "@/components/BrandMark";
-import { useDemoState } from "@/contexts/DemoStateContext";
-import { demoProfile } from "@/lib/demoData";
 import { sidebarGroups } from "@/lib/nav";
 import { cn } from "@/lib/utils";
+import { notificationService } from "@/services/notificationService";
+import { profileService } from "@/services/profileService";
 
 export function Sidebar() {
-  const { unreadCount } = useDemoState();
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: notificationService.list,
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile"],
+    queryFn: profileService.get,
+  });
+
+  const unreadCount = notifications.filter((item) => !item.is_read).length;
 
   return (
     <aside className="sticky top-0 hidden h-svh w-[272px] shrink-0 overflow-y-auto border-r border-line bg-paper lg:flex lg:flex-col">
@@ -58,9 +69,9 @@ export function Sidebar() {
       </nav>
 
       <div className="m-3 rounded-[1.25rem] border border-line bg-canvas p-3">
-        <p className="text-sm font-medium">{demoProfile.name}</p>
+        <p className="text-sm font-medium">{profile?.name ?? "Student"}</p>
         <p className="text-xs text-muted">
-          Sem {demoProfile.semester} {demoProfile.section} · {demoProfile.course}
+          {profile?.semester ? `Sem ${profile.semester}` : "Current semester"} {profile?.section ?? ""} · {profile?.course ?? "Program"}
         </p>
       </div>
     </aside>

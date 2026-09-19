@@ -1,4 +1,5 @@
-import { createBrowserRouter } from "react-router-dom";
+import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { AiChatPage } from "@/pages/AiChatPage";
@@ -17,31 +18,61 @@ import { StudyPlannerPage } from "@/pages/StudyPlannerPage";
 import { SubjectsPage } from "@/pages/SubjectsPage";
 import { TasksPage } from "@/pages/TasksPage";
 
+function ProtectedRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="flex min-h-svh items-center justify-center">Loading...</div>;
+  }
+
+  return user ? <Outlet /> : <Navigate to="/login" replace />;
+}
+
+function PublicOnlyRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="flex min-h-svh items-center justify-center">Loading...</div>;
+  }
+
+  return user ? <Navigate to="/app" replace /> : <Outlet />;
+}
+
 export const router = createBrowserRouter([
   { path: "/", element: <LandingPage /> },
   {
-    element: <AuthLayout />,
+    element: <PublicOnlyRoute />,
     children: [
-      { path: "/login", element: <LoginPage /> },
-      { path: "/register", element: <RegisterPage /> },
+      {
+        element: <AuthLayout />,
+        children: [
+          { path: "/login", element: <LoginPage /> },
+          { path: "/register", element: <RegisterPage /> },
+        ],
+      },
     ],
   },
   {
     path: "/app",
-    element: <DashboardLayout />,
+    element: <ProtectedRoute />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: "subjects", element: <SubjectsPage /> },
-      { path: "homework", element: <HomeworkPage /> },
-      { path: "planner", element: <StudyPlannerPage /> },
-      { path: "exams", element: <ExamsPage /> },
-      { path: "tasks", element: <TasksPage /> },
-      { path: "hobbies", element: <HobbiesPage /> },
-      { path: "progress", element: <ProgressPage /> },
-      { path: "notifications", element: <NotificationsPage /> },
-      { path: "chat", element: <AiChatPage /> },
-      { path: "profile", element: <ProfilePage /> },
-      { path: "settings", element: <SettingsPage /> },
+      {
+        element: <DashboardLayout />,
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: "subjects", element: <SubjectsPage /> },
+          { path: "homework", element: <HomeworkPage /> },
+          { path: "planner", element: <StudyPlannerPage /> },
+          { path: "exams", element: <ExamsPage /> },
+          { path: "tasks", element: <TasksPage /> },
+          { path: "hobbies", element: <HobbiesPage /> },
+          { path: "progress", element: <ProgressPage /> },
+          { path: "notifications", element: <NotificationsPage /> },
+          { path: "chat", element: <AiChatPage /> },
+          { path: "profile", element: <ProfilePage /> },
+          { path: "settings", element: <SettingsPage /> },
+        ],
+      },
     ],
   },
 ]);

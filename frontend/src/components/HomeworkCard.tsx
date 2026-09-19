@@ -24,12 +24,15 @@ type HomeworkCardProps = {
 };
 
 export function HomeworkCard({ homework, onStatus }: HomeworkCardProps) {
+  const dueDate = homework.dueDate ?? homework.due_date ?? new Date().toISOString();
+  const subjectLabel = homework.subjectId ?? homework.subject_id ?? "General work";
+
   return (
     <Card className="min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted uppercase">
-            {subjectName(homework.subjectId)}
+            {subjectName(subjectLabel)}
           </p>
           <h3 className="mt-1 font-display text-lg leading-snug">{homework.title}</h3>
         </div>
@@ -40,10 +43,10 @@ export function HomeworkCard({ homework, onStatus }: HomeworkCardProps) {
           </Badge>
         </div>
       </div>
-      <p className="mt-3 text-sm leading-6 text-muted">{homework.description}</p>
+      <p className="mt-3 text-sm leading-6 text-muted">{homework.description ?? "No additional details."}</p>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <p className={cn("text-sm font-medium", dueLabel(homework.dueDate).includes("overdue") ? "text-amber" : "text-ink")}>
-          {dueLabel(homework.dueDate)}
+        <p className={cn("text-sm font-medium", dueLabel(dueDate).includes("overdue") ? "text-amber" : "text-ink")}>
+          {dueLabel(dueDate)}
         </p>
         {onStatus ? (
           <select

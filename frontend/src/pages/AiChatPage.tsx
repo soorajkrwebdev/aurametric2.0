@@ -1,27 +1,44 @@
-import { type FormEvent, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { LoadingState } from "@/components/LoadingState";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { useDemoState } from "@/contexts/DemoStateContext";
-import { demoThreads } from "@/lib/demoData";
+import { chatService } from "@/services/chatService";
 import { cn } from "@/lib/utils";
 
 export function AiChatPage() {
-  const { chat, sendChat } = useDemoState();
+  const queryClient = useQueryClient();
+  const endRef = useRef<HTMLDivElement | null>(null);
   const [draft, setDraft] = useState("");
-  const [pending, setPending] = useState(false);
+
+  const { data: messages = [], isLoading, error } = useQuery({
+    queryKey: ["chat"],
+    queryFn: chatService.list,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: chatService.send,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat"] });
+      setDraft("");
+    },
+  });
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!draft.trim() || pending) return;
-    setPending(true);
-    window.setTimeout(() => {
-      sendChat(draft.trim());
-      setDraft("");
-      setPending(false);
-    }, 400);
+    const trimmed = draft.trim();
+
+    if (!trimmed || sendMutation.isPending) {
+      return;
+    }
+
+    sendMutation.mutate(trimmed);
   }
 
   return (
@@ -29,30 +46,23 @@ export function AiChatPage() {
       <PageHeader
         eyebrow="Assistant"
         title="AI chat"
-        description="The conversation UI is ready. It is not connected to Hugging Face or any model yet."
+        description="A simple Qwen-powered conversation kept behind the authenticated backend API."
       />
-      <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
-        <Card className="h-fit">
-          <p className="mb-3 text-sm font-medium">Threads</p>
-          <div className="space-y-2">
-            {demoThreads.map((thread, index) => (
-              <div
-                key={thread.id}
-                className={cn(
-                  "rounded-2xl px-3 py-2.5",
-                  index === 0 ? "bg-primary-soft" : "bg-canvas",
-                )}
-              >
-                <p className="text-sm font-medium">{thread.title}</p>
-                <p className="truncate text-xs text-muted">{thread.preview}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
 
-        <Card className="flex min-h-[28rem] flex-col">
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-            {chat.map((message) => (
+      <Card className="flex min-h-[30rem] flex-col">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+          {isLoading ? (
+            <LoadingState label="Loading chat history" />
+          ) : error ? (
+            <div className="rounded-2xl bg-red-50 p-3 text-sm text-red-600">
+              Unable to load chat history right now.
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="rounded-2xl bg-canvas p-4 text-sm text-muted">
+              Start the conversation with a quick message.
+            </div>
+          ) : (
+            messages.map((message) => (
               <div
                 key={message.id}
                 className={cn(
@@ -72,24 +82,28 @@ export function AiChatPage() {
                   {message.time}
                 </p>
               </div>
-            ))}
-            {pending ? <LoadingState label="Drafting a demo reply" /> : null}
+            ))
+          )}
+
+          {sendMutation.isPending ? <LoadingState label="Thinking…" /> : null}
+          <div ref={endRef} />
+        </div>
+
+        <form className="mt-4 space-y-2" onSubmit={onSubmit}>
+          <Textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Ask a simple question…"
+            maxLength={2000}
+          />
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted">{draft.trim().length}/2000</p>
+            <Button type="submit" disabled={sendMutation.isPending || !draft.trim()}>
+              Send
+            </Button>
           </div>
-          <form className="mt-4 space-y-2" onSubmit={onSubmit}>
-            <Textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Ask for a study split, a recap, or a kinder timetable…"
-            />
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted">Local canned replies only.</p>
-              <Button type="submit" disabled={pending}>
-                Send
-              </Button>
-            </div>
-          </form>
-        </Card>
-      </div>
+        </form>
+      </Card>
     </div>
   );
 }

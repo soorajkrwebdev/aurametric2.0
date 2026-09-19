@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
 import { env } from "./config/env.js";
-import { errorHandler } from "./middleware/errorHandler.js";
+import { errorMiddleware } from "./middleware/errorMiddleware.js";
 import { notFound } from "./middleware/notFound.js";
 import { apiRouter } from "./routes/index.js";
 
@@ -11,6 +11,7 @@ export function createApp() {
   app.use(
     cors({
       origin: env.clientOrigin,
+      credentials: true,
     }),
   );
   app.use(express.json());
@@ -27,7 +28,7 @@ export function createApp() {
 
   app.use("/api", apiRouter);
   app.use(notFound);
-  app.use(errorHandler);
+  app.use(errorMiddleware);
 
   return app;
 }
