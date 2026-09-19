@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, CalendarDays, CheckSquare, Timer } from "lucide-react";
 import { Link } from "react-router-dom";
+import { LoadingState } from "@/components/LoadingState";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,7 @@ export function DashboardPage() {
   const greeting = useGreeting();
   const { session, user, loading: authLoading } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["dashboard"],
     queryFn: fetchDashboard,
     enabled: !authLoading && !!session?.access_token,
@@ -64,6 +65,25 @@ export function DashboardPage() {
   const maxHours = Math.max(...weeklyStudy.map((item) => item.hours), 1);
   const studyHours = (stats.totalStudyMinutes / 60).toFixed(1);
 
+  if (authLoading || isLoading) {
+    return <LoadingState label="Loading your dashboard" className="mx-auto mt-8 max-w-4xl" />;
+  }
+
+  if (error) {
+    return (
+      <Card className="mx-auto mt-8 max-w-3xl p-6 text-sm text-red-600">
+        We couldn’t load your dashboard data right now. Please refresh or try again in a moment.
+      </Card>
+    );
+  }
+
+  const quickActions = [
+    { label: "Add Homework", to: "/app/homework" },
+    { label: "Add Task", to: "/app/tasks" },
+    { label: "Add Study Session", to: "/app/planner" },
+    { label: "Add Exam", to: "/app/exams" },
+  ];
+
   return (
     <div className="mx-auto max-w-6xl min-w-0">
       <PageHeader
@@ -83,6 +103,16 @@ export function DashboardPage() {
           </div>
         }
       />
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        {quickActions.map((action) => (
+          <Link key={action.label} to={action.to}>
+            <Button size="sm" variant="outline">
+              {action.label}
+            </Button>
+          </Link>
+        ))}
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard

@@ -27,7 +27,18 @@ export class ApiClientError extends Error {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
+function isDemoMode() {
+  const url = import.meta.env.VITE_SUPABASE_URL ?? "";
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+
+  return !url || !key || url.includes("placeholder") || key.includes("placeholder");
+}
+
 async function getAccessToken(): Promise<string | null> {
+  if (isDemoMode()) {
+    return "demo-access-token";
+  }
+
   const {
     data: { session },
     error,

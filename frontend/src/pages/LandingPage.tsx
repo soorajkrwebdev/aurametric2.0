@@ -74,7 +74,7 @@ export function LandingPage() {
             </Link>
           </div>
           <p className="mt-4 text-xs text-muted">
-            Demo uses static data. Sign-in and the database are not connected yet.
+            Demo account: ananya.krishnan@campus.edu / demo-only
           </p>
         </motion.div>
 

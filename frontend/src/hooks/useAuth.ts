@@ -43,7 +43,62 @@ type AuthContextValue = {
   refreshSession: () => Promise<void>;
 };
 
+const DEMO_EMAIL = "ananya.krishnan@campus.edu";
+const DEMO_PASSWORD = "demo-only";
+const DEMO_USER_ID = "demo-user";
+const DEMO_NAME = "Ananya Krishnan";
+
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function isDemoMode(): boolean {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? "";
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+
+  return (
+    !supabaseUrl ||
+    !supabaseKey ||
+    supabaseUrl.includes("placeholder") ||
+    supabaseKey.includes("placeholder")
+  );
+}
+
+function buildDemoUser(): User {
+  return {
+    id: DEMO_USER_ID,
+    email: DEMO_EMAIL,
+    user_metadata: {
+      full_name: DEMO_NAME,
+      college: "North Campus",
+      course: "B.Sc. Computer Science",
+      semester: 5,
+      section: "A",
+    },
+    app_metadata: { provider: "demo" },
+    aud: "authenticated",
+    created_at: new Date().toISOString(),
+    role: "authenticated",
+    updated_at: new Date().toISOString(),
+    confirmed_at: new Date().toISOString(),
+    last_sign_in_at: new Date().toISOString(),
+    phone: null,
+    email_confirmed_at: new Date().toISOString(),
+    identities: [],
+    factors: [],
+  } as User;
+}
+
+function buildDemoSession(): Session {
+  const user = buildDemoUser();
+
+  return {
+    access_token: "demo-access-token",
+    refresh_token: "demo-refresh-token",
+    expires_in: 3600,
+    expires_at: Math.floor((Date.now() + 60 * 60 * 1000) / 1000),
+    token_type: "bearer",
+    user,
+  } as Session;
+}
 
 function buildProfile(input: RegisterInput, userId: string, email: string | null): SupabaseProfileInsert {
   return {
@@ -59,11 +114,19 @@ function buildProfile(input: RegisterInput, userId: string, email: string | null
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const demoEnabled = isDemoMode();
+  const [session, setSession] = useState<Session | null>(demoEnabled ? buildDemoSession() : null);
+  const [user, setUser] = useState<User | null>(demoEnabled ? buildDemoUser() : null);
+  const [loading, setLoading] = useState(!demoEnabled);
 
   useEffect(() => {
+    if (demoEnabled) {
+      setSession(buildDemoSession());
+      setUser(buildDemoUser());
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     const syncAuthState = async () => {
@@ -103,9 +166,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [demoEnabled]);
 
   const refreshSession = useCallback(async () => {
+    if (isDemoMode()) {
+      const demoSession = buildDemoSession();
+      setSession(demoSession);
+      setUser(demoSession.user);
+      return;
+    }
+
     const {
       data: { session: nextSession },
       error,
@@ -120,6 +190,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(async (input: RegisterInput): Promise<AuthResult> => {
+    if (isDemoMode()) {
+      const demoSession = buildDemoSession();
+      setSession(demoSession);
+      setUser(demoSession.user);
+      return {
+        ok: true,
+        user: demoSession.user,
+        session: demoSession,
+      };
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: input.email,
       password: input.password,
@@ -164,6 +245,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (input: LoginInput): Promise<AuthResult> => {
+    if (isDemoMode()) {
+      const emailMatches = input.email.trim().toLowerCase() === DEMO_EMAIL.toLowerCase();
+      const passwordMatches = input.password === DEMO_PASSWORD;
+
+      if (!emailMatches || !passwordMatches) {
+        return {
+          ok: false,
+          error: "Use the demo account: ananya.krishnan@campus.edu / demo-only",
+        };
+      }
+
+      const demoSession = buildDemoSession();
+      setSession(demoSession);
+      setUser(demoSession.user);
+
+      return {
+        ok: true,
+        user: demoSession.user,
+        session: demoSession,
+      };
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: input.email,
       password: input.password,
@@ -181,6 +284,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    if (isDemoMode()) {
+      setSession(null);
+      setUser(null);
+      return;
+    }
+
     const { error } = await supabase.auth.signOut();
 
     if (error) {

@@ -39,6 +39,9 @@ export function LoginPage() {
       <p className="mt-2 text-sm text-muted">
         Access your study workspace with your campus email and password.
       </p>
+      <p className="mt-3 rounded-xl bg-primary-soft px-3 py-2 text-xs text-primary">
+        Demo account: ananya.krishnan@campus.edu / demo-only
+      </p>
       <form className="mt-6 space-y-4" onSubmit={onSubmit}>
         <div>
           <Label htmlFor="email">Campus email</Label>
